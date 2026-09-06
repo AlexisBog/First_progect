@@ -32,15 +32,6 @@ def save_transactions(file_path: Path, transactions: list, income_cats: list = N
     except Exception as e:
         logger.error(f"Помилка збереження транзакцій: {e}", exc_info=True)
         raise DataStorageError(f"Не вдалося зберегти транзакції: {e}")
-#def save_transactions(file_path: Path, transactions: list):
-#    try:
-#        data = {"transactions": [tx.to_dict() for tx in transactions]}
-#        with open(file_path, "w", encoding="utf-8") as f:
-#            json.dump(data, f, ensure_ascii=False, indent=4)
-#    except Exception as e:
-#        logger.error(f"Помилка збереження транзакцій: {e}", exc_info=True)
-#        raise DataStorageError(f"Не вдалося зберегти транзакції: {e}")
-
 
 def load_budgets(file_path: Path) -> dict:
     if not file_path.exists():

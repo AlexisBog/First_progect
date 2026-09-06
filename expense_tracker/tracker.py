@@ -14,7 +14,9 @@ class ExpenseTracker:
         self.income_categories = list(DEFAULT_INCOME_CATEGORIES)
         self.expense_categories = list(DEFAULT_EXPENSE_CATEGORIES)
         self.data_file = Path(data_file)
+        self.budget_file = Path(budget_file)
         self.load_from_file()
+        self.budgets = load_budgets(self.budget_file)
 
     def add_transaction(self, transaction: Transaction):
         self.transactions.append(transaction)
@@ -74,8 +76,8 @@ class ExpenseTracker:
 
     def set_budget(self, category: str, limit: float):
         budget = Budget(category, limit)
+        if category in self.budgets:
+            logger.warning(f"Бюджет для категорії '{category}' вже існує, оновлюємо ліміт.")
         self.budgets[category] = budget
         save_budgets(self.budget_file, self.budgets)
         logger.info(f"Встановлено бюджет для категорії '{category}': {limit} грн")
-
-        
