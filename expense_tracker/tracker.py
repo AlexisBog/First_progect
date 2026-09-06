@@ -1,15 +1,16 @@
 import json
 from pathlib import Path
 
-from .models import Transaction
+from .models import Transaction, Budget
 from .exceptions import TransactionNotFoundError, DataStorageError
 from .constants import DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES
 from .logger import logger
-
+from .storage import load_transactions, save_transactions, load_budgets, save_budgets
 
 class ExpenseTracker:
-    def __init__(self, data_file: str = "data.json"):
+    def __init__(self, data_file: str = "data.json", budget_file: str = "budgets.json"):
         self.transactions = []
+        self.budgets = {}
         self.income_categories = list(DEFAULT_INCOME_CATEGORIES)
         self.expense_categories = list(DEFAULT_EXPENSE_CATEGORIES)
         self.data_file = Path(data_file)
@@ -18,11 +19,13 @@ class ExpenseTracker:
     def add_transaction(self, transaction: Transaction):
         self.transactions.append(transaction)
         logger.info(f"Додано нову транзакцію: {transaction}")
+        self.save_to_file()
 
     def delete_transaction(self, index: int) -> Transaction:
         if 0 <= index < len(self.transactions):
             deleted = self.transactions.pop(index)
             logger.info(f"Видалено транзакцію під індексом {index + 1}: {deleted}")
+            self.save_to_file()
             return deleted
         
         err_msg = f"Спроба видалення за некоректним індексом: {index + 1}"
@@ -68,3 +71,11 @@ class ExpenseTracker:
         except Exception as e:
             logger.error(f"Помилка зчитання JSON: {e}", exc_info=True)
             raise DataStorageError(f"Помилка завантаження даних: {e}")
+
+    def set_budget(self, category: str, limit: float):
+        budget = Budget(category, limit)
+        self.budgets[category] = budget
+        save_budgets(self.budget_file, self.budgets)
+        logger.info(f"Встановлено бюджет для категорії '{category}': {limit} грн")
+
+        

@@ -68,3 +68,27 @@ class Expense(Transaction):
     def __str__(self):
         rec_symbol = " 🔄" if self.is_recurring else ""
         return f"[{self.date}] 🔴 Витрата: {self.amount:.2f} грн | {self.category} ({self.description}){rec_symbol}"
+
+
+class Budget:
+    def __init__(self, category: str, limit: float):
+        if limit <= 0:
+            raise InvalidAmountError("Ліміт бюджету повинен бути більшим за 0!")
+        self.category = category
+        self.limit = float(limit)
+
+    def to_dict(self) -> dict:
+        return {
+            "category": self.category,
+            "limit": self.limit
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            category=data["category"],
+            limit=data["limit"]
+        )
+
+    def __str__(self):
+        return f"🎯 Бюджет [{self.category}]: {self.limit:.2f} грн"
