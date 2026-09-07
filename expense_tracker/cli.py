@@ -12,6 +12,8 @@ def print_menu():
     print("3. Переглянути всі транзакції")
     print("4. Переглянути баланс")
     print("5. Видалити транзакцію")
+    print("6. Встановити бюджет для категорії")
+    print("7. Переглянути бюджети")
     print("0. Вихід")
     print("==============================")
 
@@ -30,7 +32,6 @@ def run_cli():
                 
                 income = Income(amount, category, description)
                 tracker.add_transaction(income)
-                tracker.save_to_file()
                 print("✅ Дохід успішно додано!")
 
             elif choice == "2":
@@ -41,7 +42,6 @@ def run_cli():
 
                 expense = Expense(amount, category, description, is_recurring=is_recurring)
                 tracker.add_transaction(expense)
-                tracker.save_to_file()
                 print("✅ Витрату успішно додано!")
 
             elif choice == "3":
@@ -74,8 +74,23 @@ def run_cli():
 
                 index = int(input("Введіть номер транзакції для видалення: ")) - 1
                 deleted = tracker.delete_transaction(index)
-                tracker.save_to_file()
                 print(f"✅ Транзакцію '{deleted}' успішно видалено!")
+                input("\nНатисніть Enter, щоб повернутися в меню...")
+
+            elif choice == "6":
+                category = input("Введіть категорію: ").strip()
+                limit = float(input("Введіть ліміт бюджету: "))
+                tracker.set_budget(category, limit)
+                print("✅ Бюджет успішно встановлено!")
+
+            elif choice == "7":
+                if not tracker.budgets:
+                    print("\nℹ️ Бюджети ще не встановлено.")
+                else:
+                    print("\n--- БЮДЖЕТИ ---")
+                    for b in tracker.budgets.values():
+                        print(b)
+                    print("---------------")
                 input("\nНатисніть Enter, щоб повернутися в меню...")
 
             elif choice == "0":
