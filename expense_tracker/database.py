@@ -14,10 +14,6 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("DROP TABLE IF EXISTS budgets")
-    cursor.execute("DROP TABLE IF EXISTS transactions")
-    cursor.execute("DROP TABLE IF EXISTS users")
-
     # ТАБЛИЦЯ КОРИСТУВАЧІВ
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users(
