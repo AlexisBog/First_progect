@@ -1,57 +1,53 @@
-from pathlib import Path
-
-from .models import Transaction, Budget
+from . import models
+from .database import get_connection, init_db
 from .exceptions import TransactionNotFoundError
-from .constants import DEFAULT_INCOME_CATEGORIES, DEFAULT_EXPENSE_CATEGORIES
 from .logger import logger
-from .storage import load_transactions, save_transactions, load_budgets, save_budgets
+
 
 class ExpenseTracker:
-    def __init__(self, data_file: str = "data.json", budget_file: str = "budgets.json"):
-        self.transactions = []
-        self.budgets = {}
-        self.income_categories = list(DEFAULT_INCOME_CATEGORIES)
-        self.expense_categories = list(DEFAULT_EXPENSE_CATEGORIES)
-        self.data_file = Path(data_file)
-        self.budget_file = Path(budget_file)
-        self.load_from_file()
-        self.budgets = load_budgets(self.budget_file)
+    def __init__(self, username: str = "local_user", email: str = "local_user@example.com"):
+        init_db()
+        self.username = username
+        self.user_id = self._get_or_create_user(username, email)
+        logger.info(f"Трекер ініціалізовано для користувача '{username}' (id={self.user_id}).")
 
-    def add_transaction(self, transaction: Transaction):
-        self.transactions.append(transaction)
-        logger.info(f"Додано нову транзакцію: {transaction}")
-        self.save_to_file()
+    @staticmethod
+    def _get_or_create_user(username: str, email: str) -> int:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        conn.close()
 
-    def delete_transaction(self, index: int) -> Transaction:
-        if 0 <= index < len(self.transactions):
-            deleted = self.transactions.pop(index)
-            logger.info(f"Видалено транзакцію під індексом {index + 1}: {deleted}")
-            self.save_to_file()
-            return deleted
-        
-        err_msg = f"Спроба видалення за некоректним індексом: {index + 1}"
-        logger.warning(err_msg)
-        raise TransactionNotFoundError(err_msg)
+        if row:
+            return row["id"]
+        return models.create_user(username, email)
+
+    def add_transaction(self, amount: float, transaction_type: str, category: str, description: str = "") -> int:
+        return models.add_transaction(self.user_id, amount, transaction_type, category, description)
+
+    def delete_transaction(self, transaction_id: int) -> int:
+        deleted = models.delete_transaction(transaction_id)
+        if not deleted:
+            err_msg = f"Транзакцію з id={transaction_id} не знайдено."
+            logger.warning(err_msg)
+            raise TransactionNotFoundError(err_msg)
+        return transaction_id
+
+    def get_all_transactions(self) -> list:
+        return models.get_all_transactions(self.user_id)
 
     def calculate_balance(self) -> float:
-        return sum(tx.get_impact() for tx in self.transactions)
+        return models.get_balance(self.user_id)
 
-    def save_to_file(self):
-        save_transactions(self.data_file, self.transactions, self.income_categories, self.expense_categories)
-        logger.info("Дані успішно збережено у JSON.")
-
-    def load_from_file(self):
-        self.transactions, inc_cats, exp_cats = load_transactions(self.data_file)
-        if inc_cats:
-            self.income_categories = inc_cats
-        if exp_cats:
-            self.expense_categories = exp_cats
-        logger.info(f"Завантажено {len(self.transactions)} транзакцій з файлу.")
+    def get_expenses_by_category(self) -> list:
+        return models.get_expenses_by_category(self.user_id)
 
     def set_budget(self, category: str, limit: float):
-        budget = Budget(category, limit)
-        if category in self.budgets:
-            logger.warning(f"Бюджет для категорії '{category}' вже існує, оновлюємо ліміт.")
-        self.budgets[category] = budget
-        save_budgets(self.budget_file, self.budgets)
-        logger.info(f"Встановлено бюджет для категорії '{category}': {limit} грн")
+        return models.set_budget(self.user_id, category, limit)
+
+    def get_budgets(self) -> list:
+        return models.get_budgets(self.user_id)
+
+    def get_budget_status(self) -> list:
+        return models.check_budget_status(self.user_id)

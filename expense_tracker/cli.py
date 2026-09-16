@@ -1,7 +1,7 @@
 from .tracker import ExpenseTracker
-from .models import Income, Expense
 from .exceptions import InvalidAmountError, TransactionNotFoundError, DataStorageError
 from .logger import logger
+
 
 def print_menu():
     print("\n==============================")
@@ -14,8 +14,17 @@ def print_menu():
     print("5. Видалити транзакцію")
     print("6. Встановити бюджет для категорії")
     print("7. Переглянути бюджети")
+    print("8. Перевірити стан бюджетів (поточний місяць)")
     print("0. Вихід")
     print("==============================")
+
+
+def print_transaction(tx: dict):
+    sign = "+" if tx["transaction_type"] == "income" else "-"
+    emoji = "🟢" if tx["transaction_type"] == "income" else "🔴"
+    desc = f" ({tx['description']})" if tx["description"] else ""
+    print(f"[{tx['id']}] {tx['date']} {emoji} {tx['category']}: {sign}{tx['amount']:.2f} грн{desc}")
+
 
 def run_cli():
     tracker = ExpenseTracker()
@@ -29,9 +38,8 @@ def run_cli():
                 amount = float(input("Введіть суму доходу: "))
                 category = input("Введіть категорію: ").strip() or "Дохід"
                 description = input("Введіть опис (необов'язково): ").strip()
-                
-                income = Income(amount, category, description)
-                tracker.add_transaction(income)
+
+                tracker.add_transaction(amount, "income", category, description)
                 print("✅ Дохід успішно додано!")
 
             elif choice == "2":
@@ -39,18 +47,20 @@ def run_cli():
                 category = input("Введіть категорію: ").strip() or "Витрата"
                 description = input("Введіть опис (необов'язково): ").strip()
                 is_recurring = input("Регулярна витрата? (так/ні): ").strip().lower() in ["так", "yes", "y", "1"]
+                if is_recurring:
+                    description = f"{description} 🔄 [регулярна]".strip()
 
-                expense = Expense(amount, category, description, is_recurring=is_recurring)
-                tracker.add_transaction(expense)
+                tracker.add_transaction(amount, "expense", category, description)
                 print("✅ Витрату успішно додано!")
 
             elif choice == "3":
-                if not tracker.transactions:
+                transactions = tracker.get_all_transactions()
+                if not transactions:
                     print("\nℹ️ Список транзакцій порожній.")
                 else:
                     print("\n--- СПИСОК УСІХ ТРАНЗАКЦІЙ ---")
-                    for i, tx in enumerate(tracker.transactions, 1):
-                        print(f"{i}. {tx}")
+                    for tx in transactions:
+                        print_transaction(tx)
                     print("-------------------------------")
                 input("\nНатисніть Enter, щоб повернутися в меню...")
 
@@ -62,19 +72,20 @@ def run_cli():
                 input("\nНатисніть Enter, щоб повернутися в меню...")
 
             elif choice == "5":
-                if not tracker.transactions:
+                transactions = tracker.get_all_transactions()
+                if not transactions:
                     print("\nℹ️ Немає транзакцій для видалення.")
                     input("\nНатисніть Enter, щоб повернутися в меню...")
                     continue
 
                 print("\n--- СПИСОК ТРАНЗАКЦІЙ ---")
-                for i, tx in enumerate(tracker.transactions, 1):
-                    print(f"{i}. {tx}")
+                for tx in transactions:
+                    print_transaction(tx)
                 print("-------------------------")
 
-                index = int(input("Введіть номер транзакції для видалення: ")) - 1
-                deleted = tracker.delete_transaction(index)
-                print(f"✅ Транзакцію '{deleted}' успішно видалено!")
+                transaction_id = int(input("Введіть номер [id] транзакції для видалення: "))
+                tracker.delete_transaction(transaction_id)
+                print(f"✅ Транзакцію id={transaction_id} успішно видалено!")
                 input("\nНатисніть Enter, щоб повернутися в меню...")
 
             elif choice == "6":
@@ -84,13 +95,26 @@ def run_cli():
                 print("✅ Бюджет успішно встановлено!")
 
             elif choice == "7":
-                if not tracker.budgets:
+                budgets = tracker.get_budgets()
+                if not budgets:
                     print("\nℹ️ Бюджети ще не встановлено.")
                 else:
                     print("\n--- БЮДЖЕТИ ---")
-                    for b in tracker.budgets.values():
-                        print(b)
+                    for b in budgets:
+                        print(f"🎯 Бюджет [{b['category']}]: {b['monthly_limit']:.2f} грн")
                     print("---------------")
+                input("\nНатисніть Enter, щоб повернутися в меню...")
+
+            elif choice == "8":
+                statuses = tracker.get_budget_status()
+                if not statuses:
+                    print("\nℹ️ Бюджети ще не встановлено.")
+                else:
+                    print("\n--- СТАН БЮДЖЕТІВ (поточний місяць) ---")
+                    for s in statuses:
+                        mark = "⚠️ " if s["exceeded"] else "✅ "
+                        print(f"{mark}{s['category']:<12}: {s['spent']:.2f} / {s['monthly_limit']:.2f} грн")
+                    print("----------------------------------------")
                 input("\nНатисніть Enter, щоб повернутися в меню...")
 
             elif choice == "0":
@@ -111,7 +135,7 @@ def run_cli():
             input("\nНатисніть Enter, щоб продовжити...")
 
         except DataStorageError as e:
-            print(f"\n❌ Помилка файлової системи: {e}")
+            print(f"\n❌ Помилка бази даних: {e}")
             input("\nНатисніть Enter, щоб продовжити...")
 
         except Exception as e:
