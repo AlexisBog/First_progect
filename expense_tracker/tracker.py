@@ -1,5 +1,12 @@
+"""
+ExpenseTracker — тонка обгортка над функціональним шаром models.py.
+Раніше зберігав стан у пам'яті й писав його в JSON (storage.py);
+тепер кожна операція одразу читає/пише в SQLite через models.py.
+"""
+
 from . import models
 from .database import get_connection, init_db
+from .decorators import log_transaction, validate_amount
 from .exceptions import TransactionNotFoundError
 from .logger import logger
 
@@ -26,6 +33,19 @@ class ExpenseTracker:
     def add_transaction(self, amount: float, transaction_type: str, category: str, description: str = "") -> int:
         return models.add_transaction(self.user_id, amount, transaction_type, category, description)
 
+    @validate_amount
+    @log_transaction
+    def add_income(self, amount: float, category: str, description: str = ""):
+        """Додає дохід. При некоректній сумі декоратор validate_amount поверне None."""
+        return self.add_transaction(amount, "income", category, description)
+
+    @validate_amount
+    @log_transaction
+    def add_expense(self, amount: float, category: str, description: str = ""):
+        """Додає витрату. При некоректній сумі декоратор validate_amount поверне None."""
+        return self.add_transaction(amount, "expense", category, description)
+
+    @log_transaction
     def delete_transaction(self, transaction_id: int) -> int:
         deleted = models.delete_transaction(transaction_id)
         if not deleted:

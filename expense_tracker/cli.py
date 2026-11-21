@@ -39,8 +39,11 @@ def run_cli():
                 category = input("Введіть категорію: ").strip() or "Дохід"
                 description = input("Введіть опис (необов'язково): ").strip()
 
-                tracker.add_transaction(amount, "income", category, description)
-                print("✅ Дохід успішно додано!")
+                transaction_id = tracker.add_income(amount, category, description)
+                if transaction_id is None:
+                    print("⚠️ Сума має бути додатним числом. Дохід не додано.")
+                else:
+                    print("✅ Дохід успішно додано!")
 
             elif choice == "2":
                 amount = float(input("Введіть суму витрати: "))
@@ -50,8 +53,11 @@ def run_cli():
                 if is_recurring:
                     description = f"{description} 🔄 [регулярна]".strip()
 
-                tracker.add_transaction(amount, "expense", category, description)
-                print("✅ Витрату успішно додано!")
+                transaction_id = tracker.add_expense(amount, category, description)
+                if transaction_id is None:
+                    print("⚠️ Сума має бути додатним числом. Витрату не додано.")
+                else:
+                    print("✅ Витрату успішно додано!")
 
             elif choice == "3":
                 transactions = tracker.get_all_transactions()
